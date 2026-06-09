@@ -463,13 +463,14 @@ function renderRightPage(container, spread) {
 }
 
 function emojiScale(id, labels, savedVal) {
-  const idx = savedVal ? labels.indexOf(savedVal) : 2;
+  const idx = labels.indexOf(savedVal);
   const safeIdx = idx === -1 ? 2 : idx;
+  const labelsJson = labels.map(l => `'${l}'`).join(',');
   return `
     <div style="margin-bottom:0.75rem;">
       <input type="range" min="0" max="4" step="1" value="${safeIdx}" id="${id}Scale"
-        oninput="document.getElementById('${id}Label').textContent = ${JSON.stringify(labels)}[this.value]"
-        style="width:100%;accent-color:#8a6e52;"/>
+        style="width:100%;accent-color:#8a6e52;"
+        oninput="document.getElementById('${id}Label').textContent = [${labelsJson}][parseInt(this.value)]"/>
       <span id="${id}Label" style="font-family:'Lato',sans-serif;font-size:11px;font-weight:300;color:#8a6e52;letter-spacing:0.05em;">${labels[safeIdx]}</span>
     </div>
   `;
