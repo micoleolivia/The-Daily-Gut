@@ -465,7 +465,7 @@ function emojiScale(id, labels, savedVal) {
     <div style="margin-bottom:0.75rem;">
       <input type="range" min="0" max="4" step="1" value="${safeIdx}" id="${id}Scale"
         oninput="document.getElementById('${id}Label').textContent = ${JSON.stringify(labels)}[this.value]"
-        style="width:100%;"/>
+        style="width:100%;accent-color:#8a6e52;"/>
       <span id="${id}Label" style="font-family:'Lato',sans-serif;font-size:11px;font-weight:300;color:#8a6e52;letter-spacing:0.05em;">${labels[safeIdx]}</span>
     </div>
   `;
