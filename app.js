@@ -422,14 +422,14 @@ function renderRightPage(container, spread) {
       <div>
         <span class="section-label">water</span>
         <div class="slider-row">
-          <input type="range" min="0" max="15" step="1" value="${saved.water || 6}" id="waterSlider" oninput="document.getElementById('waterVal').textContent = this.value"/>
+          <input type="range" min="0" max="15" step="1" value="${saved.water || 6}" id="waterSlider"style="accent-color:#8a6e52;" oninput="document.getElementById('waterVal').textContent = this.value"/>
           <span class="slider-val" id="waterVal">${saved.water || 6} <span style="font-size:10px;color:#b8a480;">glasses</span></span>
         </div>
       </div>
       <div>
         <span class="section-label">sleep</span>
         <div class="slider-row">
-          <input type="range" min="0" max="12" step="1" value="${saved.sleep || 7}" id="sleepSlider" oninput="document.getElementById('sleepVal').textContent = this.value"/>
+          <input type="range" min="0" max="12" step="1" value="${saved.sleep || 7}" id="sleepSlider" style="accent-color:#8a6e52;" oninput="document.getElementById('sleepVal').textContent = this.value"/>
           <span class="slider-val" id="sleepVal">${saved.sleep || 7} <span style="font-size:10px;color:#b8a480;">hrs</span></span>
         </div>
       </div>
