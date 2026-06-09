@@ -458,12 +458,15 @@ function renderRightPage(container, spread) {
   `;
 }
 
-function emojiScale(id, emojis, savedVal) {
+function emojiScale(id, labels, savedVal) {
+  const idx = savedVal ? labels.indexOf(savedVal) : 2;
+  const safeIdx = idx === -1 ? 2 : idx;
   return `
-    <div class="emoji-scale" id="${id}Scale">
-      ${emojis.map(e => `
-        <button class="emoji-btn ${savedVal === e ? 'active' : ''}" onclick="selectEmoji('${id}Scale', this)" data-val="${e}" style="width:28px;height:28px;font-size:15px;">${e}</button>
-      `).join('')}
+    <div style="margin-bottom:0.75rem;">
+      <input type="range" min="0" max="4" step="1" value="${safeIdx}" id="${id}Scale"
+        oninput="document.getElementById('${id}Label').textContent = ${JSON.stringify(labels)}[this.value]"
+        style="width:100%;"/>
+      <span id="${id}Label" style="font-family:'Lato',sans-serif;font-size:11px;font-weight:300;color:#8a6e52;letter-spacing:0.05em;">${labels[safeIdx]}</span>
     </div>
   `;
 }
