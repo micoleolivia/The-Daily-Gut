@@ -630,7 +630,7 @@ html, body {
   margin-bottom: 1.25rem;
 }
 
-.slider-row input[type=range] { flex: 1; }
+.slider-row input[type=range] { flex: 1; accent-color: #8a6e52; }
 
 .slider-val {
   font-size: 13px;
