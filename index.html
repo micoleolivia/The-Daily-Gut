@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Daily Gut</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <!-- PROFILE SELECTION SCREEN -->
+  <div id="profileScreen" class="screen active">
+    <div class="profile-cover">
+      <div class="cover-title-wrap">
+        <p class="cover-eyebrow">your personal</p>
+        <h1 class="cover-title">The Daily Gut</h1>
+        <p class="cover-subtitle">a journal for patterns your body is trying to tell you</p>
+      </div>
+      <div class="profile-grid" id="profileGrid"></div>
+      <button class="add-profile-btn" onclick="openAddProfile()">+ add profile</button>
+    </div>
+  </div>
+
+  <!-- ADD PROFILE MODAL -->
+  <div id="addProfileModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2 class="modal-title">new profile</h2>
+      <div class="modal-field">
+        <label>name</label>
+        <input type="text" id="newProfileName" placeholder="e.g. Mom" />
+      </div>
+      <div class="modal-field">
+        <label>track menstrual cycle?</label>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="cycleYes" onclick="setCycle(true)">yes</button>
+          <button class="toggle-btn" id="cycleNo" onclick="setCycle(false)">no</button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>avatar colour</label>
+        <div class="colour-row" id="colourRow">
+          <div class="colour-dot active" style="background:#8a6e52" data-colour="#8a6e52" onclick="selectColour(this)"></div>
+          <div class="colour-dot" style="background:#6e8a7a" data-colour="#6e8a7a" onclick="selectColour(this)"></div>
+          <div class="colour-dot" style="background:#7a6e8a" data-colour="#7a6e8a" onclick="selectColour(this)"></div>
+          <div class="colour-dot" style="background:#8a7a6e" data-colour="#8a7a6e" onclick="selectColour(this)"></div>
+          <div class="colour-dot" style="background:#6e7a8a" data-colour="#6e7a8a" onclick="selectColour(this)"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeAddProfile()">cancel</button>
+        <button class="btn-primary" onclick="saveNewProfile()">create profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (book) -->
+  <div id="appScreen" class="screen hidden">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <button class="back-btn" onclick="goToProfiles()">← profiles</button>
+      <span class="top-bar-name" id="topBarName"></span>
+      <button class="new-entry-btn" onclick="startNewEntry()">+ new entry</button>
+    </div>
+
+    <!-- BOOK WRAPPER -->
+    <div class="book-scene">
+      <div class="book" id="book">
+
+        <div class="book-spine">
+          <span class="spine-text">The Daily Gut</span>
+        </div>
+
+        <div class="book-pages" id="bookPages">
+          <!-- Pages injected by JS -->
+        </div>
+
+      </div>
+
+      <!-- PAGE NAVIGATION -->
+      <div class="nav-area">
+        <button class="nav-btn" id="prevBtn" onclick="changePage(-1)">
+          &#8592; previous
+        </button>
+        <div class="page-dots" id="pageDots"></div>
+        <button class="nav-btn" id="nextBtn" onclick="changePage(1)">
+          next &#8594;
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
