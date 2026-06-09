@@ -266,7 +266,10 @@ function renderTOCLeft(container) {
 
 function renderTOCRight(container) {
   const completedEntries = entries.filter(e => e.date);
-  let items = '';
+  let items = `<li class="toc-item" onclick="goToPatterns()" style="border-top: 1px dashed #e8dfd0;">
+      <span class="toc-entry-date" style="font-style:normal; color:#8a6e52;">✦ patterns</span>
+      <span class="toc-entry-arrow">→</span>
+    </li>`;
   if (completedEntries.length === 0) {
     items = `<p class="toc-empty">your journal is empty — tap "+ new entry" to write your first page.</p>`;
   } else {
@@ -329,6 +332,7 @@ function renderMealsLeft(container, spread) {
         <input type="text" id="dessert" placeholder="e.g. ice cream" value="${saved.dessert || ''}" />
       </div>
     </div>
+    <button onclick="clearEntry('${d}')" style="margin-top:1rem;font-family:'Lato',sans-serif;font-size:11px;letter-spacing:0.06em;color:#b8a480;background:transparent;border:1px solid #e0d5c4;border-radius:3px;padding:6px 14px;cursor:pointer;" onmouseover="this.style.color='#c0392b';this.style.borderColor='#c0392b'" onmouseout="this.style.color='#b8a480';this.style.borderColor='#e0d5c4'">clear this entry</button>
   `;
 }
 
@@ -629,4 +633,19 @@ async function saveEntry(date, data) {
 function val(id) {
   const el = document.getElementById(id);
   return el ? el.value.trim() : '';
+}
+
+async function clearEntry(date) {
+  if (!confirm('clear everything logged for this day?')) return;
+  try {
+    await db.collection('profiles').doc(currentProfile.id).collection('entries').doc(date).delete();
+    entries = entries.filter(e => e.date !== date);
+    buildSpreads();
+    currentSpreadIndex = 0;
+    renderCurrentSpread();
+    showToast('entry cleared ✓');
+  } catch(e) {
+    showToast('something went wrong');
+    console.error(e);
+  }
 }
