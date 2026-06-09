@@ -406,15 +406,15 @@ function renderRightPage(container, spread) {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:1rem;">
       <div>
         <span class="section-label">mood</span>
-        ${emojiScale('mood', ['😣','😕','😐','🙂','😊'], saved.mood)}
+        ${emojiScale('mood', ['awful','low','okay','good','great'], saved.mood)}
       </div>
       <div>
         <span class="section-label">stress</span>
-        ${emojiScale('stress', ['😌','😐','😤','😰','😩'], saved.stress)}
+        ${emojiScale('stress', ['calm','mild','moderate','stressed','overwhelmed'], saved.stress)}
       </div>
       <div>
         <span class="section-label">energy</span>
-        ${emojiScale('energy', ['🪫','😴','⚡','🔥','✨'], saved.energy)}
+        ${emojiScale('energy', ['drained','tired','okay','energised','buzzing'], saved.energy)}
       </div>
     </div>
 
