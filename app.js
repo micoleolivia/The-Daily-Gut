@@ -283,12 +283,23 @@ function renderTOCRight(container) {
       `;
     });
     items += '</ul>';
+  items += `
+    <li class="toc-item" onclick="goToPatterns()">
+      <span class="toc-entry-date" style="font-style:normal;">patterns</span>
+      <span class="toc-entry-arrow">→</span>
+    </li>
+  `;
   }
   container.innerHTML = `
     ${pageHeader('', 'contents')}
     <p class="page-title">Contents</p>
     ${items}
   `;
+}
+
+function goToPatterns() {
+  const idx = spreads.findIndex(s => s.type === 'patterns');
+  if (idx >= 0) { currentSpreadIndex = idx; renderCurrentSpread(); }
 }
 
 function goToEntry(date) {
