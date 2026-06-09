@@ -15,17 +15,15 @@ const db = firebase.firestore();
 let currentProfile = null;
 let profiles = [];
 let entries = [];
-let currentPageIndex = 0;
-let pages = [];
+let currentSpreadIndex = 0;
+let spreads = [];
 let selectedColour = "#8a6e52";
 let trackCycle = false;
-let currentEntryDate = null;
-let currentEntryData = {};
 
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', () => {
-  loadProfiles();
   buildToast();
+  loadProfiles();
 });
 
 // ── TOAST ──
@@ -48,11 +46,8 @@ async function loadProfiles() {
   try {
     const snap = await db.collection('profiles').get();
     profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (profiles.length === 0) {
-      await seedDefaultProfile();
-    } else {
-      renderProfiles();
-    }
+    if (profiles.length === 0) await seedDefaultProfile();
+    else renderProfiles();
   } catch (e) {
     console.error('Error loading profiles:', e);
     renderProfiles();
@@ -60,19 +55,12 @@ async function loadProfiles() {
 }
 
 async function seedDefaultProfile() {
-  const defaultProfile = {
-    name: 'Micole',
-    colour: '#8a6e52',
-    trackCycle: true,
-    createdAt: new Date().toISOString()
-  };
+  const defaultProfile = { name: 'Micole', colour: '#8a6e52', trackCycle: true, createdAt: new Date().toISOString() };
   try {
     const ref = await db.collection('profiles').add(defaultProfile);
     profiles = [{ id: ref.id, ...defaultProfile }];
     renderProfiles();
-  } catch (e) {
-    console.error('Error seeding profile:', e);
-  }
+  } catch (e) { console.error('Error seeding profile:', e); }
 }
 
 function renderProfiles() {
@@ -103,7 +91,7 @@ function selectProfile(profile) {
 function goToProfiles() {
   currentProfile = null;
   entries = [];
-  currentPageIndex = 0;
+  currentSpreadIndex = 0;
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('appScreen').classList.add('hidden');
   document.getElementById('profileScreen').classList.remove('hidden');
@@ -141,22 +129,14 @@ function selectColour(el) {
 async function saveNewProfile() {
   const name = document.getElementById('newProfileName').value.trim();
   if (!name) { showToast('please enter a name'); return; }
-  const profile = {
-    name,
-    colour: selectedColour,
-    trackCycle,
-    createdAt: new Date().toISOString()
-  };
+  const profile = { name, colour: selectedColour, trackCycle, createdAt: new Date().toISOString() };
   try {
     const ref = await db.collection('profiles').add(profile);
     profiles.push({ id: ref.id, ...profile });
     renderProfiles();
     closeAddProfile();
     showToast(`welcome, ${name}!`);
-  } catch (e) {
-    showToast('something went wrong, try again');
-    console.error(e);
-  }
+  } catch (e) { showToast('something went wrong, try again'); console.error(e); }
 }
 
 // ── ENTRIES ──
@@ -165,12 +145,9 @@ async function loadEntries() {
     const snap = await db.collection('profiles').doc(currentProfile.id)
       .collection('entries').orderBy('date', 'desc').get();
     entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    console.error('Error loading entries:', e);
-    entries = [];
-  }
-  buildPages();
-  renderCurrentPage();
+  } catch (e) { console.error('Error loading entries:', e); entries = []; }
+  buildSpreads();
+  renderCurrentSpread();
 }
 
 function startNewEntry() {
@@ -178,78 +155,77 @@ function startNewEntry() {
   const exists = entries.find(e => e.date === today);
   if (exists) {
     showToast("today's entry already exists");
-    const idx = pages.findIndex(p => p.type === 'meals' && p.date === today);
-    if (idx >= 0) { currentPageIndex = idx; renderCurrentPage(); }
+    const idx = spreads.findIndex(s => s.type === 'entry' && s.date === today);
+    if (idx >= 0) { currentSpreadIndex = idx; renderCurrentSpread(); }
     return;
   }
-  currentEntryDate = today;
-  currentEntryData = { date: today, profileId: currentProfile.id };
   entries.unshift({ date: today, isNew: true });
-  buildPages();
-  const idx = pages.findIndex(p => p.type === 'meals' && p.date === today);
-  currentPageIndex = idx >= 0 ? idx : 0;
-  renderCurrentPage();
+  buildSpreads();
+  const idx = spreads.findIndex(s => s.type === 'entry' && s.date === today);
+  currentSpreadIndex = idx >= 0 ? idx : 0;
+  renderCurrentSpread();
 }
 
-// ── PAGE BUILDER ──
-function buildPages() {
-  pages = [];
-
-  // Cover / Table of contents
-  pages.push({ type: 'toc' });
-
-  // Entry pages (3 pages per entry)
+// ── SPREAD BUILDER ──
+// Each "spread" = one open book (left page + right page)
+// Spread types: 'toc' | 'entry' | 'patterns'
+function buildSpreads() {
+  spreads = [];
+  spreads.push({ type: 'toc' });
   entries.forEach(entry => {
-    pages.push({ type: 'meals', date: entry.date, entry });
-    pages.push({ type: 'wellbeing', date: entry.date, entry });
-    pages.push({ type: 'symptoms', date: entry.date, entry });
+    spreads.push({ type: 'entry', date: entry.date, entry });
   });
-
-  // Patterns page always last
-  pages.push({ type: 'patterns' });
+  spreads.push({ type: 'patterns' });
 }
 
-// ── RENDER ──
-function renderCurrentPage() {
-  const container = document.getElementById('bookPages');
-  container.innerHTML = '';
+// ── RENDER SPREAD ──
+function renderCurrentSpread() {
+  const left = document.getElementById('bookLeft');
+  const right = document.getElementById('bookRight');
+  left.innerHTML = '';
+  right.innerHTML = '';
 
-  const page = pages[currentPageIndex];
-  if (!page) return;
+  const spread = spreads[currentSpreadIndex];
+  if (!spread) return;
 
-  document.getElementById('prevBtn').disabled = currentPageIndex === 0;
-  document.getElementById('nextBtn').disabled = currentPageIndex === pages.length - 1;
+  document.getElementById('prevBtn').disabled = currentSpreadIndex === 0;
+  document.getElementById('nextBtn').disabled = currentSpreadIndex === spreads.length - 1;
   renderDots();
 
-  if (page.type === 'toc') renderTOC(container);
-  else if (page.type === 'meals') renderMealsPage(container, page);
-  else if (page.type === 'wellbeing') renderWellbeingPage(container, page);
-  else if (page.type === 'symptoms') renderSymptomsPage(container, page);
-  else if (page.type === 'patterns') renderPatternsPage(container);
+  if (spread.type === 'toc') {
+    renderTOCLeft(left);
+    renderTOCRight(right);
+  } else if (spread.type === 'entry') {
+    renderMealsLeft(left, spread);
+    renderRightPage(right, spread);
+  } else if (spread.type === 'patterns') {
+    renderPatternsLeft(left);
+    renderPatternsRight(right);
+  }
 
-  addDecoFlower(container);
+  addDecoFlower(right);
 }
 
 function renderDots() {
   const dotsEl = document.getElementById('pageDots');
   dotsEl.innerHTML = '';
-  const total = Math.min(pages.length, 9);
+  const total = Math.min(spreads.length, 11);
   for (let i = 0; i < total; i++) {
     const d = document.createElement('div');
-    d.className = 'dot' + (i === Math.min(currentPageIndex, total - 1) ? ' active' : '');
-    d.onclick = () => { currentPageIndex = i; renderCurrentPage(); };
+    d.className = 'dot' + (i === Math.min(currentSpreadIndex, total - 1) ? ' active' : '');
+    d.onclick = () => { currentSpreadIndex = i; renderCurrentSpread(); };
     dotsEl.appendChild(d);
   }
 }
 
 function changePage(dir) {
-  currentPageIndex = Math.max(0, Math.min(pages.length - 1, currentPageIndex + dir));
-  renderCurrentPage();
+  currentSpreadIndex = Math.max(0, Math.min(spreads.length - 1, currentSpreadIndex + dir));
+  renderCurrentSpread();
 }
 
 function addDecoFlower(container) {
   container.insertAdjacentHTML('beforeend', `
-    <svg class="deco-flower" width="90" height="90" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="deco-flower" width="80" height="80" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="45" cy="18" rx="9" ry="22" fill="#8a6e52" transform="rotate(0 45 45)"/>
       <ellipse cx="45" cy="18" rx="9" ry="22" fill="#8a6e52" transform="rotate(45 45 45)"/>
       <ellipse cx="45" cy="18" rx="9" ry="22" fill="#8a6e52" transform="rotate(90 45 45)"/>
@@ -260,31 +236,45 @@ function addDecoFlower(container) {
 }
 
 // ── PAGE HEADER HELPER ──
-function pageHeader(dateStr, pageLabel, pageNum) {
+function pageHeader(dateStr, pageLabel) {
   const formatted = dateStr
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : '';
   return `
     <div class="page-header">
       <span class="page-date-label">${formatted}</span>
-      <span class="page-num">${pageLabel} · ${pageNum}</span>
+      <span class="page-num">${pageLabel}</span>
     </div>
   `;
 }
 
 // ── TABLE OF CONTENTS ──
-function renderTOC(container) {
-  const entryPages = entries.filter(e => !e.isNew || e.date);
+function renderTOCLeft(container) {
+  container.innerHTML = `
+    ${pageHeader('', '—')}
+    <p class="page-title">The Daily Gut</p>
+    <p class="page-subtitle">a journal for patterns your body is trying to tell you</p>
+    <div style="margin-top: 1.5rem;">
+      <p style="font-family:'Lato',sans-serif; font-size:12px; font-weight:300; color:#9a8a72; line-height:1.8;">
+        every day you log is a data point.<br>
+        every data point is a clue.<br>
+        this journal finds the pattern.
+      </p>
+    </div>
+  `;
+}
+
+function renderTOCRight(container) {
+  const completedEntries = entries.filter(e => e.date);
   let items = '';
-  if (entryPages.length === 0) {
-    items = `<p class="toc-empty">your journal is empty — tap "+ new entry" to begin your first page.</p>`;
+  if (completedEntries.length === 0) {
+    items = `<p class="toc-empty">your journal is empty — tap "+ new entry" to write your first page.</p>`;
   } else {
     items = '<ul class="toc-list">';
-    entryPages.forEach(entry => {
+    completedEntries.forEach(entry => {
       const d = new Date(entry.date + 'T12:00:00');
-      const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' });
       const mood = entry.mood || '';
-      const idx = pages.findIndex(p => p.type === 'meals' && p.date === entry.date);
       items += `
         <li class="toc-item" onclick="goToEntry('${entry.date}')">
           <span class="toc-entry-date">${label}</span>
@@ -294,42 +284,31 @@ function renderTOC(container) {
     });
     items += '</ul>';
   }
-
   container.innerHTML = `
-    ${pageHeader('', 'contents', '—')}
-    <p class="page-title">Table of Contents</p>
-    <p class="page-subtitle">every day, one page at a time</p>
+    ${pageHeader('', 'contents')}
+    <p class="page-title">Contents</p>
     ${items}
   `;
 }
 
 function goToEntry(date) {
-  const idx = pages.findIndex(p => p.type === 'meals' && p.date === date);
-  if (idx >= 0) { currentPageIndex = idx; renderCurrentPage(); }
+  const idx = spreads.findIndex(s => s.type === 'entry' && s.date === date);
+  if (idx >= 0) { currentSpreadIndex = idx; renderCurrentSpread(); }
 }
 
-// ── MEALS PAGE ──
-function renderMealsPage(container, page) {
-  const d = page.date;
-  const saved = page.entry || {};
+// ── LEFT PAGE: MEALS ──
+function renderMealsLeft(container, spread) {
+  const d = spread.date;
+  const saved = spread.entry || {};
 
   container.innerHTML = `
-    ${pageHeader(d, 'meals', '1 of 3')}
+    ${pageHeader(d, 'meals')}
     <p class="page-title">Today's Meals</p>
     <p class="page-subtitle">what went in, and when</p>
-
-    <span class="section-label">eating in or out today?</span>
-    <div class="in-out-row" id="inOutRow">
-      <button class="in-out-btn ${(saved.eatLocation || 'in') === 'in' ? 'active' : ''}" onclick="setInOut('in', this)">eating in</button>
-      <button class="in-out-btn ${saved.eatLocation === 'out' ? 'active' : ''}" onclick="setInOut('out', this)">eating out</button>
-      <button class="in-out-btn ${saved.eatLocation === 'both' ? 'active' : ''}" onclick="setInOut('both', this)">both</button>
-    </div>
-
-    ${mealField('Breakfast', 'breakfast', saved)}
-    ${mealField('Lunch', 'lunch', saved)}
-    ${mealField('Dinner', 'dinner', saved)}
-
-    <div class="field-row">
+    ${mealBlock('breakfast', 'Breakfast', saved)}
+    ${mealBlock('lunch', 'Lunch', saved)}
+    ${mealBlock('dinner', 'Dinner', saved)}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.5rem;">
       <div class="field">
         <span class="section-label">snacks</span>
         <input type="text" id="snacks" placeholder="e.g. apple, crackers" value="${saved.snacks || ''}" />
@@ -339,31 +318,40 @@ function renderMealsPage(container, page) {
         <input type="text" id="dessert" placeholder="e.g. ice cream" value="${saved.dessert || ''}" />
       </div>
     </div>
-
-    <button class="save-btn" onclick="saveMealsPage('${d}')">save & continue →</button>
   `;
-
-  setInOutState(saved.eatLocation || 'in');
 }
 
-function mealField(label, key, saved) {
+function mealBlock(key, label, saved) {
   const skipped = saved[key + 'Skipped'] || false;
+  const location = saved[key + 'Location'] || '';
   return `
-    <div style="margin-bottom: 1.1rem;">
+    <div class="meal-block" id="${key}Block">
       <div class="meal-header">
         <span class="section-label" style="margin-bottom:0">${label}</span>
         <span class="skip-link ${skipped ? 'skipped' : ''}" id="${key}SkipLink" onclick="toggleSkip('${key}')">${skipped ? 'skipped ✓' : 'skip'}</span>
       </div>
-      <div class="field-row" id="${key}Fields" style="${skipped ? 'opacity:0.3;pointer-events:none;' : ''}">
-        <div class="field">
-          <input type="text" id="${key}Food" placeholder="what did you eat?" value="${saved[key + 'Food'] || ''}" />
+      <div id="${key}Fields" style="${skipped ? 'opacity:0.3;pointer-events:none;' : ''}">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;align-items:end;margin-bottom:4px;">
+          <input type="text" id="${key}Food" placeholder="what did you eat?" value="${saved[key + 'Food'] || ''}" style="font-family:'Lato',sans-serif;font-size:12px;font-weight:300;background:transparent;border:none;border-bottom:1px solid #d6c9b0;padding:3px 2px 5px;color:#4a3728;outline:none;width:100%;"/>
+          <input type="time" id="${key}Time" value="${saved[key + 'Time'] || ''}" style="font-family:'Lato',sans-serif;font-size:11px;background:transparent;border:none;border-bottom:1px solid #d6c9b0;padding:3px 2px 5px;color:#7a6652;outline:none;width:80px;"/>
         </div>
-        <div class="field">
-          <input type="time" id="${key}Time" value="${saved[key + 'Time'] || ''}" />
+        <div class="in-out-row" id="${key}InOut">
+          <button class="in-out-btn ${location === 'in' || location === '' ? 'active' : ''}" onclick="setMealLocation('${key}', 'in', this)">in</button>
+          <button class="in-out-btn ${location === 'out' ? 'active' : ''}" onclick="setMealLocation('${key}', 'out', this)">out</button>
         </div>
       </div>
     </div>
   `;
+}
+
+function setMealLocation(key, val, btn) {
+  document.querySelectorAll(`#${key}InOut .in-out-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function getMealLocation(key) {
+  const active = document.querySelector(`#${key}InOut .in-out-btn.active`);
+  return active ? active.textContent.trim() : 'in';
 }
 
 function toggleSkip(key) {
@@ -383,90 +371,83 @@ function toggleSkip(key) {
   }
 }
 
-let currentEatLocation = 'in';
-function setInOut(val, btn) { setInOutState(val); }
-function setInOutState(val) {
-  currentEatLocation = val;
-  document.querySelectorAll('.in-out-btn').forEach(b => b.classList.remove('active'));
-  const btns = document.querySelectorAll('.in-out-btn');
-  const map = { in: 0, out: 1, both: 2 };
-  if (btns[map[val]]) btns[map[val]].classList.add('active');
-}
+// ── RIGHT PAGE: WELLBEING + SYMPTOMS + NOTES ──
+function renderRightPage(container, spread) {
+  const d = spread.date;
+  const saved = spread.entry || {};
+  const savedSymptoms = saved.symptoms || [];
 
-async function saveMealsPage(date) {
-  const data = {
-    date,
-    profileId: currentProfile.id,
-    eatLocation: currentEatLocation,
-    breakfastFood: val('breakfastFood'),
-    breakfastTime: val('breakfastTime'),
-    breakfastSkipped: document.getElementById('breakfastSkipLink')?.classList.contains('skipped') || false,
-    lunchFood: val('lunchFood'),
-    lunchTime: val('lunchTime'),
-    lunchSkipped: document.getElementById('lunchSkipLink')?.classList.contains('skipped') || false,
-    dinnerFood: val('dinnerFood'),
-    dinnerTime: val('dinnerTime'),
-    dinnerSkipped: document.getElementById('dinnerSkipLink')?.classList.contains('skipped') || false,
-    snacks: val('snacks'),
-    dessert: val('dessert'),
-    updatedAt: new Date().toISOString()
-  };
-  await saveEntry(date, data);
-  showToast('meals saved ✓');
-  changePage(1);
-}
-
-// ── WELLBEING PAGE ──
-function renderWellbeingPage(container, page) {
-  const d = page.date;
-  const saved = page.entry || {};
+  const symptoms = [
+    'bloating','stomach pain','nausea','leg pain',
+    'fatigue','brain fog','headache','heartburn',
+    'skin flare','joint ache','good energy','no symptoms'
+  ];
 
   container.innerHTML = `
-    ${pageHeader(d, 'wellbeing', '2 of 3')}
-    <p class="page-title">Wellbeing</p>
-    <p class="page-subtitle">how your body and mind are doing</p>
+    ${pageHeader(d, 'wellbeing & symptoms')}
+    <p class="page-title">How You Feel</p>
+    <p class="page-subtitle">body, mind, and patterns</p>
 
-    <span class="section-label">mood</span>
-    ${emojiScale('mood', ['😣','😕','😐','🙂','😊'], saved.mood)}
-
-    <span class="section-label">stress</span>
-    ${emojiScale('stress', ['😌','😐','😤','😰','😩'], saved.stress)}
-
-    <span class="section-label">energy</span>
-    ${emojiScale('energy', ['🪫','😴','⚡','🔥','✨'], saved.energy)}
-
-    <hr class="divider"/>
-
-    <span class="section-label">water intake</span>
-    <div class="slider-row">
-      <input type="range" min="0" max="15" step="1" value="${saved.water || 6}" id="waterSlider" oninput="document.getElementById('waterVal').textContent = this.value + ' glasses'"/>
-      <span class="slider-val" id="waterVal">${saved.water || 6} glasses</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:1rem;">
+      <div>
+        <span class="section-label">mood</span>
+        ${emojiScale('mood', ['😣','😕','😐','🙂','😊'], saved.mood)}
+      </div>
+      <div>
+        <span class="section-label">stress</span>
+        ${emojiScale('stress', ['😌','😐','😤','😰','😩'], saved.stress)}
+      </div>
+      <div>
+        <span class="section-label">energy</span>
+        ${emojiScale('energy', ['🪫','😴','⚡','🔥','✨'], saved.energy)}
+      </div>
     </div>
 
-    <span class="section-label">sleep last night</span>
-    <div class="slider-row">
-      <input type="range" min="0" max="12" step="1" value="${saved.sleep || 7}" id="sleepSlider" oninput="document.getElementById('sleepVal').textContent = this.value + ' hrs'"/>
-      <span class="slider-val" id="sleepVal">${saved.sleep || 7} hrs</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+      <div>
+        <span class="section-label">water</span>
+        <div class="slider-row">
+          <input type="range" min="0" max="15" step="1" value="${saved.water || 6}" id="waterSlider" oninput="document.getElementById('waterVal').textContent = this.value"/>
+          <span class="slider-val" id="waterVal">${saved.water || 6} <span style="font-size:10px;color:#b8a480;">glasses</span></span>
+        </div>
+      </div>
+      <div>
+        <span class="section-label">sleep</span>
+        <div class="slider-row">
+          <input type="range" min="0" max="12" step="1" value="${saved.sleep || 7}" id="sleepSlider" oninput="document.getElementById('sleepVal').textContent = this.value"/>
+          <span class="slider-val" id="sleepVal">${saved.sleep || 7} <span style="font-size:10px;color:#b8a480;">hrs</span></span>
+        </div>
+      </div>
     </div>
 
     ${currentProfile.trackCycle ? `
-      <hr class="divider"/>
-      <span class="section-label">cycle day</span>
-      <div class="cycle-row">
-        <input type="number" id="cycleDay" min="1" max="35" placeholder="e.g. 14" value="${saved.cycleDay || ''}"/>
-        <span class="cycle-label">day of cycle (leave blank if unsure)</span>
+      <div style="margin-bottom:0.75rem;">
+        <span class="section-label">cycle day</span>
+        <input type="number" id="cycleDay" min="1" max="35" placeholder="day e.g. 14" value="${saved.cycleDay || ''}" style="font-family:'Lato',sans-serif;font-size:13px;background:transparent;border:none;border-bottom:1px solid #d6c9b0;padding:4px 2px 6px;color:#4a3728;outline:none;width:100px;"/>
       </div>
     ` : ''}
 
-    <button class="save-btn" onclick="saveWellbeingPage('${d}')">save & continue →</button>
+    <hr class="divider" style="margin: 0.75rem 0;"/>
+
+    <span class="section-label">symptoms</span>
+    <div class="symptom-grid" id="symptomGrid" style="margin-bottom:0.75rem;">
+      ${symptoms.map(s => `
+        <button class="symptom-tag ${savedSymptoms.includes(s) ? 'active' : ''}" onclick="this.classList.toggle('active')">${s}</button>
+      `).join('')}
+    </div>
+
+    <span class="section-label">notes</span>
+    <textarea id="notesField" placeholder="anything else — patterns, timing, how you felt after eating..." style="font-family:'Lato',sans-serif;font-size:12px;font-weight:300;background:transparent;border:none;border-bottom:1px solid #d6c9b0;padding:4px 2px 6px;color:#4a3728;outline:none;width:100%;resize:none;height:44px;line-height:1.6;">${saved.notes || ''}</textarea>
+
+    <button class="save-btn" onclick="saveEntrySpread('${d}')">save the day ✓</button>
   `;
 }
 
 function emojiScale(id, emojis, savedVal) {
   return `
-    <div class="emoji-scale" id="${id}Scale" style="margin-bottom:1.25rem;">
-      ${emojis.map((e, i) => `
-        <button class="emoji-btn ${savedVal === e ? 'active' : ''}" onclick="selectEmoji('${id}Scale', this)" data-val="${e}">${e}</button>
+    <div class="emoji-scale" id="${id}Scale">
+      ${emojis.map(e => `
+        <button class="emoji-btn ${savedVal === e ? 'active' : ''}" onclick="selectEmoji('${id}Scale', this)" data-val="${e}" style="width:28px;height:28px;font-size:15px;">${e}</button>
       `).join('')}
     </div>
   `;
@@ -482,132 +463,138 @@ function getEmoji(scaleId) {
   return active ? active.dataset.val : '';
 }
 
-async function saveWellbeingPage(date) {
+// ── SAVE FULL SPREAD ──
+async function saveEntrySpread(date) {
   const data = {
+    date,
+    profileId: currentProfile.id,
+    breakfastFood: val('breakfastFood'),
+    breakfastTime: val('breakfastTime'),
+    breakfastSkipped: document.getElementById('breakfastSkipLink')?.classList.contains('skipped') || false,
+    breakfastLocation: getMealLocation('breakfast'),
+    lunchFood: val('lunchFood'),
+    lunchTime: val('lunchTime'),
+    lunchSkipped: document.getElementById('lunchSkipLink')?.classList.contains('skipped') || false,
+    lunchLocation: getMealLocation('lunch'),
+    dinnerFood: val('dinnerFood'),
+    dinnerTime: val('dinnerTime'),
+    dinnerSkipped: document.getElementById('dinnerSkipLink')?.classList.contains('skipped') || false,
+    dinnerLocation: getMealLocation('dinner'),
+    snacks: val('snacks'),
+    dessert: val('dessert'),
     mood: getEmoji('moodScale'),
     stress: getEmoji('stressScale'),
     energy: getEmoji('energyScale'),
     water: parseInt(document.getElementById('waterSlider')?.value || 6),
     sleep: parseInt(document.getElementById('sleepSlider')?.value || 7),
     cycleDay: document.getElementById('cycleDay')?.value || null,
-    updatedAt: new Date().toISOString()
-  };
-  await saveEntry(date, data);
-  showToast('wellbeing saved ✓');
-  changePage(1);
-}
-
-// ── SYMPTOMS PAGE ──
-function renderSymptomsPage(container, page) {
-  const d = page.date;
-  const saved = page.entry || {};
-  const savedSymptoms = saved.symptoms || [];
-
-  const symptoms = [
-    'bloating', 'stomach pain', 'nausea', 'leg pain',
-    'fatigue', 'brain fog', 'headache', 'heartburn',
-    'skin flare', 'joint ache', 'good energy', 'no symptoms'
-  ];
-
-  container.innerHTML = `
-    ${pageHeader(d, 'symptoms & notes', '3 of 3')}
-    <p class="page-title">Symptoms & Notes</p>
-    <p class="page-subtitle">tap everything that applies today</p>
-
-    <span class="section-label">symptoms</span>
-    <div class="symptom-grid" id="symptomGrid">
-      ${symptoms.map(s => `
-        <button class="symptom-tag ${savedSymptoms.includes(s) ? 'active' : ''}" onclick="this.classList.toggle('active')">${s}</button>
-      `).join('')}
-    </div>
-
-    <hr class="divider"/>
-
-    <span class="section-label">anything else to note?</span>
-    <div class="field-full" style="margin-top:0.5rem;">
-      <textarea id="notesField" placeholder="e.g. felt worse after lunch, leg pain started around 3pm, ate late...">${saved.notes || ''}</textarea>
-    </div>
-
-    <button class="save-btn" onclick="saveSymptomsPage('${d}')">close the day ✓</button>
-  `;
-}
-
-async function saveSymptomsPage(date) {
-  const selected = [...document.querySelectorAll('#symptomGrid .symptom-tag.active')].map(b => b.textContent);
-  const data = {
-    symptoms: selected,
+    symptoms: [...document.querySelectorAll('#symptomGrid .symptom-tag.active')].map(b => b.textContent),
     notes: val('notesField'),
     updatedAt: new Date().toISOString()
   };
   await saveEntry(date, data);
-  showToast('entry complete ✓');
-  loadEntries();
+  showToast('entry saved ✓');
 }
 
-// ── PATTERNS PAGE ──
-function renderPatternsPage(container) {
-  const completedEntries = entries.filter(e => e.symptoms && e.date);
-
+// ── PATTERNS ──
+function renderPatternsLeft(container) {
+  const completed = entries.filter(e => e.symptoms && e.date);
   let content = '';
 
-  if (completedEntries.length < 3) {
-    content = `
-      <p class="pattern-empty">
-        patterns will appear here once you have at least 3 entries.<br><br>
-        keep logging daily — your body is already talking, this page just needs a little more data to translate it.
-      </p>
-    `;
+  if (completed.length < 3) {
+    content = `<p class="pattern-empty">patterns appear here once you have at least 3 entries. keep going — your body is already talking.</p>`;
   } else {
-    const totalEntries = completedEntries.length;
-    const avgSleep = (completedEntries.reduce((a, e) => a + (e.sleep || 0), 0) / totalEntries).toFixed(1);
-    const avgWater = (completedEntries.reduce((a, e) => a + (e.water || 0), 0) / totalEntries).toFixed(1);
+    const total = completed.length;
+    const avgSleep = (completed.reduce((a, e) => a + (e.sleep || 0), 0) / total).toFixed(1);
+    const avgWater = (completed.reduce((a, e) => a + (e.water || 0), 0) / total).toFixed(1);
 
     const symptomCount = {};
-    completedEntries.forEach(e => {
+    completed.forEach(e => {
       (e.symptoms || []).forEach(s => {
         if (s !== 'no symptoms') symptomCount[s] = (symptomCount[s] || 0) + 1;
       });
     });
-
     const topSymptom = Object.entries(symptomCount).sort((a, b) => b[1] - a[1])[0];
-
-    const eatOutEntries = completedEntries.filter(e => e.eatLocation === 'out' || e.eatLocation === 'both');
-    const eatOutWithSymptom = topSymptom ? eatOutEntries.filter(e => (e.symptoms || []).includes(topSymptom[0])).length : 0;
-    const eatOutTotal = eatOutEntries.length;
 
     content = `
       <div class="pattern-card">
         <p class="pattern-card-label">most frequent symptom</p>
         <p class="pattern-card-value">${topSymptom ? topSymptom[0] : 'none yet'}</p>
-        <p class="pattern-card-sub">${topSymptom ? `logged ${topSymptom[1]} out of ${totalEntries} days` : ''}</p>
+        <p class="pattern-card-sub">${topSymptom ? `${topSymptom[1]} out of ${total} days` : ''}</p>
       </div>
-
       <div class="pattern-card">
         <p class="pattern-card-label">average sleep</p>
         <p class="pattern-card-value">${avgSleep} hrs</p>
-        <p class="pattern-card-sub">across ${totalEntries} entries</p>
+        <p class="pattern-card-sub">across ${total} entries</p>
       </div>
-
       <div class="pattern-card">
         <p class="pattern-card-label">average water</p>
-        <p class="pattern-card-value">${avgWater} glasses/day</p>
-        <p class="pattern-card-sub">across ${totalEntries} entries</p>
+        <p class="pattern-card-value">${avgWater} glasses</p>
+        <p class="pattern-card-sub">across ${total} entries</p>
       </div>
-
-      ${eatOutTotal > 0 && topSymptom ? `
-        <div class="pattern-card">
-          <p class="pattern-card-label">eating out & ${topSymptom[0]}</p>
-          <p class="pattern-card-value">${Math.round((eatOutWithSymptom / eatOutTotal) * 100)}% of the time</p>
-          <p class="pattern-card-sub">you logged ${topSymptom[0]} on ${eatOutWithSymptom} out of ${eatOutTotal} days you ate out</p>
-        </div>
-      ` : ''}
     `;
   }
 
   container.innerHTML = `
-    ${pageHeader('', 'patterns', '—')}
+    ${pageHeader('', 'patterns')}
     <p class="page-title">Patterns</p>
     <p class="page-subtitle">what your data is starting to say</p>
+    ${content}
+  `;
+}
+
+function renderPatternsRight(container) {
+  const completed = entries.filter(e => e.symptoms && e.date);
+
+  let content = '';
+  if (completed.length >= 3) {
+    const symptomCount = {};
+    completed.forEach(e => {
+      (e.symptoms || []).forEach(s => {
+        if (s !== 'no symptoms') symptomCount[s] = (symptomCount[s] || 0) + 1;
+      });
+    });
+    const topSymptom = Object.entries(symptomCount).sort((a, b) => b[1] - a[1])[0];
+
+    const eatOutEntries = completed.filter(e =>
+      e.breakfastLocation === 'out' || e.lunchLocation === 'out' || e.dinnerLocation === 'out'
+    );
+    const eatOutWithSymptom = topSymptom
+      ? eatOutEntries.filter(e => (e.symptoms || []).includes(topSymptom[0])).length
+      : 0;
+
+    const moodScores = { '😣': 1, '😕': 2, '😐': 3, '🙂': 4, '😊': 5 };
+    const moodDays = completed.filter(e => e.mood && moodScores[e.mood]);
+    const avgMood = moodDays.length
+      ? (moodDays.reduce((a, e) => a + moodScores[e.mood], 0) / moodDays.length).toFixed(1)
+      : null;
+
+    content = `
+      ${eatOutEntries.length > 0 && topSymptom ? `
+        <div class="pattern-card">
+          <p class="pattern-card-label">eating out & ${topSymptom[0]}</p>
+          <p class="pattern-card-value">${Math.round((eatOutWithSymptom / eatOutEntries.length) * 100)}% correlation</p>
+          <p class="pattern-card-sub">${eatOutWithSymptom} of ${eatOutEntries.length} days eating out</p>
+        </div>
+      ` : ''}
+      ${avgMood ? `
+        <div class="pattern-card">
+          <p class="pattern-card-label">average mood score</p>
+          <p class="pattern-card-value">${avgMood} / 5</p>
+          <p class="pattern-card-sub">across ${moodDays.length} logged days</p>
+        </div>
+      ` : ''}
+      <div class="pattern-card">
+        <p class="pattern-card-label">total entries</p>
+        <p class="pattern-card-value">${completed.length} days</p>
+        <p class="pattern-card-sub">keep going — more data = clearer patterns</p>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    ${pageHeader('', '')}
+    <p class="page-title"> </p>
     ${content}
   `;
 }
@@ -618,12 +605,9 @@ async function saveEntry(date, data) {
     const ref = db.collection('profiles').doc(currentProfile.id).collection('entries').doc(date);
     await ref.set(data, { merge: true });
     const idx = entries.findIndex(e => e.date === date);
-    if (idx >= 0) {
-      entries[idx] = { ...entries[idx], ...data };
-    } else {
-      entries.unshift({ date, ...data });
-    }
-    buildPages();
+    if (idx >= 0) entries[idx] = { ...entries[idx], ...data };
+    else entries.unshift({ date, ...data });
+    buildSpreads();
   } catch (e) {
     console.error('Save error:', e);
     showToast('save failed — check your connection');
