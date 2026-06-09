@@ -449,6 +449,10 @@ function renderRightPage(container, spread) {
       ${symptoms.map(s => `
         <button class="symptom-tag ${savedSymptoms.includes(s) ? 'active' : ''}" onclick="this.classList.toggle('active')">${s}</button>
       `).join('')}
+      ${(saved.customSymptoms || []).map(s => `
+        <button class="symptom-tag active" onclick="this.classList.toggle('active')">${s}</button>
+      `).join('')}
+      <button class="symptom-tag" style="border-style:dashed;color:#b8a480;" onclick="addCustomSymptom()">+ add</button>
     </div>
 
     <span class="section-label">notes</span>
@@ -657,4 +661,16 @@ async function clearEntry(date) {
     showToast('something went wrong');
     console.error(e);
   }
+}
+
+function addCustomSymptom() {
+  const name = prompt('enter symptom name:');
+  if (!name || !name.trim()) return;
+  const grid = document.getElementById('symptomGrid');
+  const addBtn = grid.querySelector('[onclick="addCustomSymptom()"]');
+  const newTag = document.createElement('button');
+  newTag.className = 'symptom-tag active';
+  newTag.textContent = name.trim();
+  newTag.onclick = function() { this.classList.toggle('active'); };
+  grid.insertBefore(newTag, addBtn);
 }
