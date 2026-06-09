@@ -477,8 +477,14 @@ function selectEmoji(scaleId, btn) {
 }
 
 function getEmoji(scaleId) {
-  const active = document.querySelector(`#${scaleId} .emoji-btn.active`);
-  return active ? active.dataset.val : '';
+  const slider = document.getElementById(scaleId);
+  if (!slider) return '';
+  const maps = {
+    moodScale: ['awful','low','okay','good','great'],
+    stressScale: ['calm','mild','moderate','stressed','overwhelmed'],
+    energyScale: ['drained','tired','okay','energised','buzzing']
+  };
+  return maps[scaleId] ? maps[scaleId][slider.value] : slider.value;
 }
 
 // ── SAVE FULL SPREAD ──
